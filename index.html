@@ -27,7 +27,8 @@ const ctx = canvas.getContext("2d");
 const W = canvas.width;
 const H = canvas.height;
 
-// Jednoduchá čtvercová mapa (1 = zeď, 0 = volno)
+// --- MAPA -----------------------------------------------------
+
 const map = [
   [1,1,1,1,1,1,1,1,1,1],
   [1,0,0,0,0,0,0,0,0,1],
@@ -44,17 +45,37 @@ const map = [
 const mapW = map[0].length;
 const mapH = map.length;
 
-// Pozice hráče
+// --- HRÁČ -----------------------------------------------------
+
 let px = 3.5;
 let py = 3.5;
-let pa = 0;          // úhel (radiany)
-const fov = Math.PI / 3; // zorné pole ~60°
+let pa = 0;
+
+const fov = Math.PI / 3;
 const moveSpeed = 0.06;
 const rotSpeed = 0.04;
+const mouseSensitivity = 0.0025;
+
+// --- OVLÁDÁNÍ -------------------------------------------------
 
 const keys = {};
-document.addEventListener("keydown", e => keys[e.key] = true);
-document.addEventListener("keyup", e => keys[e.key] = false);
+
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+// Myš – otáčení
+document.addEventListener("mousemove", e => {
+  if (document.pointerLockElement === canvas) {
+    pa += e.movementX * mouseSensitivity;
+  }
+});
+
+// Kliknutí pro pointer lock
+canvas.addEventListener("click", () => {
+  canvas.requestPointerLock();
+});
+
+// --- FUNKCE ---------------------------------------------------
 
 function isWall(x, y) {
   const mx = Math.floor(x);
@@ -63,35 +84,47 @@ function isWall(x, y) {
   return map[my][mx] === 1;
 }
 
-function update() {
-  // Rotace
-  if (keys["ArrowLeft"])  pa -= rotSpeed;
-  if (keys["ArrowRight"]) pa += rotSpeed;
+function tryMove(nx, ny) {
+  if (!isWall(nx, py)) px = nx;
+  if (!isWall(px, ny)) py = ny;
+}
 
-  // Pohyb dopředu/dozadu
+function update() {
+  // Rotace šipkami
+  if (keys["arrowleft"])  pa -= rotSpeed;
+  if (keys["arrowright"]) pa += rotSpeed;
+
+  // Vektory pohybu
   let dx = Math.cos(pa) * moveSpeed;
   let dy = Math.sin(pa) * moveSpeed;
 
-  if (keys["ArrowUp"]) {
-    if (!isWall(px + dx, py)) px += dx;
-    if (!isWall(px, py + dy)) py += dy;
-  }
-  if (keys["ArrowDown"]) {
-    if (!isWall(px - dx, py)) px -= dx;
-    if (!isWall(px, py - dy)) py -= dy;
-  }
+  let sdx = Math.cos(pa - Math.PI/2) * moveSpeed;
+  let sdy = Math.sin(pa - Math.PI/2) * moveSpeed;
+
+  // WASD
+  if (keys["w"]) tryMove(px + dx, py + dy);
+  if (keys["s"]) tryMove(px - dx, py - dy);
+  if (keys["a"]) tryMove(px + sdx, py + sdy);
+  if (keys["d"]) tryMove(px - sdx, py - sdy);
+
+  // Šipky nahoru/dolů
+  if (keys["arrowup"])   tryMove(px + dx, py + dy);
+  if (keys["arrowdown"]) tryMove(px - dx, py - dy);
 }
 
 function render() {
   ctx.fillStyle = "#222";
   ctx.fillRect(0, 0, W, H);
 
-  // Obloha a podlaha
+  // Obloha
   ctx.fillStyle = "#202040";
   ctx.fillRect(0, 0, W, H / 2);
+
+  // Podlaha
   ctx.fillStyle = "#303020";
   ctx.fillRect(0, H / 2, W, H / 2);
 
+  // Raycasting
   for (let x = 0; x < W; x++) {
     const rayAngle = pa - fov / 2 + (x / W) * fov;
 
@@ -110,7 +143,6 @@ function render() {
     }
 
     if (hit) {
-      // Korekce "fish-eye" efektu
       const correctedDist = dist * Math.cos(rayAngle - pa);
       const wallHeight = Math.min(H, (1 / correctedDist) * 300);
 
@@ -131,5 +163,6 @@ function loop() {
 
 loop();
 </script>
+
 </body>
 </html>
