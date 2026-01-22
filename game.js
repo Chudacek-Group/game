@@ -1,68 +1,56 @@
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+const keys = {};
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-canvas.width = 800;
-canvas.height = 500;
+// Myš – otáčení
+document.addEventListener("mousemove", e => {
+  if (document.pointerLockElement === canvas) {
+    pa += e.movementX * 0.0025; // citlivost
+  }
+});
+function update() {
+  // Rotace šipkami
+  if (keys["arrowleft"])  pa -= rotSpeed;
+  if (keys["arrowright"]) pa += rotSpeed;
 
-let paddleHeight = 80;
-let paddleWidth = 10;
+  // Pohyb dopředu/dozadu
+  let dx = Math.cos(pa) * moveSpeed;
+  let dy = Math.sin(pa) * moveSpeed;
 
-let leftPaddle = { x: 20, y: canvas.height / 2 - paddleHeight / 2 };
-let rightPaddle = { x: canvas.width - 30, y: canvas.height / 2 - paddleHeight / 2 };
+  // W = dopředu
+  if (keys["w"]) {
+    if (!isWall(px + dx, py)) px += dx;
+    if (!isWall(px, py + dy)) py += dy;
+  }
 
-let ball = { x: canvas.width / 2, y: canvas.height / 2, size: 10, dx: 4, dy: 4 };
+  // S = dozadu
+  if (keys["s"]) {
+    if (!isWall(px - dx, py)) px -= dx;
+    if (!isWall(px, py - dy)) py -= dy;
+  }
 
-let keys = {};
+  // A = strafe doleva
+  let sdx = Math.cos(pa - Math.PI/2) * moveSpeed;
+  let sdy = Math.sin(pa - Math.PI/2) * moveSpeed;
 
-document.addEventListener("keydown", e => keys[e.key] = true);
-document.addEventListener("keyup", e => keys[e.key] = false);
+  if (keys["a"]) {
+    if (!isWall(px + sdx, py)) px += sdx;
+    if (!isWall(px, py + sdy)) py += sdy;
+  }
 
-function movePaddles() {
-  if (keys["w"]) leftPaddle.y -= 5;
-  if (keys["s"]) leftPaddle.y += 5;
-  if (keys["ArrowUp"]) rightPaddle.y -= 5;
-  if (keys["ArrowDown"]) rightPaddle.y += 5;
-}
+  // D = strafe doprava
+  if (keys["d"]) {
+    if (!isWall(px - sdx, py)) px -= sdx;
+    if (!isWall(px, py - sdy)) py -= sdy;
+  }
 
-function moveBall() {
-  ball.x += ball.dx;
-  ball.y += ball.dy;
-
-  if (ball.y <= 0 || ball.y + ball.size >= canvas.height) ball.dy *= -1;
-
-  if (
-    ball.x <= leftPaddle.x + paddleWidth &&
-    ball.y + ball.size >= leftPaddle.y &&
-    ball.y <= leftPaddle.y + paddleHeight
-  ) ball.dx *= -1;
-
-  if (
-    ball.x + ball.size >= rightPaddle.x &&
-    ball.y + ball.size >= rightPaddle.y &&
-    ball.y <= rightPaddle.y + paddleHeight
-  ) ball.dx *= -1;
-
-  if (ball.x < 0 || ball.x > canvas.width) {
-    ball.x = canvas.width / 2;
-    ball.y = canvas.height / 2;
+  // Šipky nahoru/dolů stále fungují
+  if (keys["arrowup"]) {
+    if (!isWall(px + dx, py)) px += dx;
+    if (!isWall(px, py + dy)) py += dy;
+  }
+  if (keys["arrowdown"]) {
+    if (!isWall(px - dx, py)) px -= dx;
+    if (!isWall(px, py - dy)) py -= dy;
   }
 }
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = "white";
-  ctx.fillRect(leftPaddle.x, leftPaddle.y, paddleWidth, paddleHeight);
-  ctx.fillRect(rightPaddle.x, rightPaddle.y, paddleWidth, paddleHeight);
-
-  ctx.fillRect(ball.x, ball.y, ball.size, ball.size);
-}
-
-function gameLoop() {
-  movePaddles();
-  moveBall();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
