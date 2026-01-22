@@ -51,6 +51,15 @@ let px = 3.5;
 let py = 3.5;
 let pa = 0;
 
+// --- NPC -----------------------------------------------------
+let npc = {
+  x: 5.5,
+  y: 5.5,
+  dir: 1,
+  speed: 0.02
+};
+
+
 const fov = Math.PI / 3;
 const moveSpeed = 0.06;
 const rotSpeed = 0.04;
@@ -110,6 +119,15 @@ function update() {
   // Šipky nahoru/dolů
   if (keys["arrowup"])   tryMove(px + dx, py + dy);
   if (keys["arrowdown"]) tryMove(px - dx, py - dy);
+  
+    // --- NPC pohyb ---
+  npc.x += npc.dir * npc.speed;
+
+  if (isWall(npc.x, npc.y)) {
+    npc.dir *= -1;
+    npc.x += npc.dir * npc.speed;
+  }
+
 }
 
 function render() {
@@ -127,6 +145,23 @@ function render() {
   // Raycasting
   for (let x = 0; x < W; x++) {
     const rayAngle = pa - fov / 2 + (x / W) * fov;
+	
+	    // --- Ray hit NPC? ---
+    const npcDist = Math.hypot(npc.x - px, npc.y - py);
+    const npcAngle = Math.atan2(npc.y - py, npc.x - px);
+    const diff = Math.abs(((rayAngle - npcAngle + Math.PI*3) % (Math.PI*2)) - Math.PI);
+
+    if (diff < 0.02 && npcDist < 20) {
+      const corrected = npcDist * Math.cos(rayAngle - pa);
+      const size = Math.min(H, (1 / corrected) * 200);
+      const y = (H / 2) - size / 2;
+
+      ctx.fillStyle = "yellow";
+      ctx.fillRect(x, y, 1, size);
+
+      continue;
+    }
+
 
     let dist = 0;
     const step = 0.02;
