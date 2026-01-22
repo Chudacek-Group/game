@@ -2,13 +2,133 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
-  <title>Pong PWA</title>
+  <title>Jednoduchý 3D FPV raycaster</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #222;
+    }
+  </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
-  <script src="game.js"></script>
+<canvas id="screen" width="800" height="450"></canvas>
+<script>
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+
+const W = canvas.width;
+const H = canvas.height;
+
+// Jednoduchá čtvercová mapa (1 = zeď, 0 = volno)
+const map = [
+  [1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,1,1,0,0,0,1],
+  [1,0,0,0,0,0,0,1,0,1],
+  [1,0,1,0,0,0,0,1,0,1],
+  [1,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,1,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1]
+];
+
+const mapW = map[0].length;
+const mapH = map.length;
+
+// Pozice hráče
+let px = 3.5;
+let py = 3.5;
+let pa = 0;          // úhel (radiany)
+const fov = Math.PI / 3; // zorné pole ~60°
+const moveSpeed = 0.06;
+const rotSpeed = 0.04;
+
+const keys = {};
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
+
+function isWall(x, y) {
+  const mx = Math.floor(x);
+  const my = Math.floor(y);
+  if (mx < 0 || my < 0 || mx >= mapW || my >= mapH) return true;
+  return map[my][mx] === 1;
+}
+
+function update() {
+  // Rotace
+  if (keys["ArrowLeft"])  pa -= rotSpeed;
+  if (keys["ArrowRight"]) pa += rotSpeed;
+
+  // Pohyb dopředu/dozadu
+  let dx = Math.cos(pa) * moveSpeed;
+  let dy = Math.sin(pa) * moveSpeed;
+
+  if (keys["ArrowUp"]) {
+    if (!isWall(px + dx, py)) px += dx;
+    if (!isWall(px, py + dy)) py += dy;
+  }
+  if (keys["ArrowDown"]) {
+    if (!isWall(px - dx, py)) px -= dx;
+    if (!isWall(px, py - dy)) py -= dy;
+  }
+}
+
+function render() {
+  ctx.fillStyle = "#222";
+  ctx.fillRect(0, 0, W, H);
+
+  // Obloha a podlaha
+  ctx.fillStyle = "#202040";
+  ctx.fillRect(0, 0, W, H / 2);
+  ctx.fillStyle = "#303020";
+  ctx.fillRect(0, H / 2, W, H / 2);
+
+  for (let x = 0; x < W; x++) {
+    const rayAngle = pa - fov / 2 + (x / W) * fov;
+
+    let dist = 0;
+    const step = 0.02;
+    let hit = false;
+
+    let rx = px;
+    let ry = py;
+
+    while (!hit && dist < 20) {
+      dist += step;
+      rx = px + Math.cos(rayAngle) * dist;
+      ry = py + Math.sin(rayAngle) * dist;
+      if (isWall(rx, ry)) hit = true;
+    }
+
+    if (hit) {
+      // Korekce "fish-eye" efektu
+      const correctedDist = dist * Math.cos(rayAngle - pa);
+      const wallHeight = Math.min(H, (1 / correctedDist) * 300);
+
+      const shade = Math.max(50, 255 - correctedDist * 40);
+      ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+
+      const y = (H / 2) - wallHeight / 2;
+      ctx.fillRect(x, y, 1, wallHeight);
+    }
+  }
+}
+
+function loop() {
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
 </body>
 </html>
