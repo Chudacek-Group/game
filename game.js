@@ -1,56 +1,78 @@
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+
+const W = canvas.width;
+const H = canvas.height;
+
+// --- MAPA -----------------------------------------------------
+
+const map = [
+  [1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,1,1,0,0,0,1],
+  [1,0,0,0,0,0,0,1,0,1],
+  [1,0,1,0,0,0,0,1,0,1],
+  [1,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,1,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1]
+];
+
+const mapW = map[0].length;
+const mapH = map.length;
+
+// --- HRÁČ -----------------------------------------------------
+
+let px = 3.5;
+let py = 3.5;
+let pa = 0;
+
+const fov = Math.PI / 3;
+const moveSpeed = 0.06;
+const rotSpeed = 0.04;
+const mouseSensitivity = 0.0025;
+
+// --- OVLÁDÁNÍ -------------------------------------------------
+
 const keys = {};
+
 document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 // Myš – otáčení
 document.addEventListener("mousemove", e => {
   if (document.pointerLockElement === canvas) {
-    pa += e.movementX * 0.0025; // citlivost
+    pa += e.movementX * mouseSensitivity;
   }
 });
+
+// Kliknutí pro pointer lock
+canvas.addEventListener("click", () => {
+  canvas.requestPointerLock();
+});
+
+// --- FUNKCE ---------------------------------------------------
+
+function isWall(x, y) {
+  const mx = Math.floor(x);
+  const my = Math.floor(y);
+  if (mx < 0 || my < 0 || mx >= mapW || my >= mapH) return true;
+  return map[my][mx] === 1;
+}
+
+function tryMove(nx, ny) {
+  if (!isWall(nx, py)) px = nx;
+  if (!isWall(px, ny)) py = ny;
+}
+
 function update() {
   // Rotace šipkami
   if (keys["arrowleft"])  pa -= rotSpeed;
   if (keys["arrowright"]) pa += rotSpeed;
 
-  // Pohyb dopředu/dozadu
+  // Vektory pohybu
   let dx = Math.cos(pa) * moveSpeed;
   let dy = Math.sin(pa) * moveSpeed;
 
-  // W = dopředu
-  if (keys["w"]) {
-    if (!isWall(px + dx, py)) px += dx;
-    if (!isWall(px, py + dy)) py += dy;
-  }
-
-  // S = dozadu
-  if (keys["s"]) {
-    if (!isWall(px - dx, py)) px -= dx;
-    if (!isWall(px, py - dy)) py -= dy;
-  }
-
-  // A = strafe doleva
-  let sdx = Math.cos(pa - Math.PI/2) * moveSpeed;
-  let sdy = Math.sin(pa - Math.PI/2) * moveSpeed;
-
-  if (keys["a"]) {
-    if (!isWall(px + sdx, py)) px += sdx;
-    if (!isWall(px, py + sdy)) py += sdy;
-  }
-
-  // D = strafe doprava
-  if (keys["d"]) {
-    if (!isWall(px - sdx, py)) px -= sdx;
-    if (!isWall(px, py - sdy)) py -= sdy;
-  }
-
-  // Šipky nahoru/dolů stále fungují
-  if (keys["arrowup"]) {
-    if (!isWall(px + dx, py)) px += dx;
-    if (!isWall(px, py + dy)) py += dy;
-  }
-  if (keys["arrowdown"]) {
-    if (!isWall(px - dx, py)) px -= dx;
-    if (!isWall(px, py - dy)) py -= dy;
-  }
-}
+  let sdx = Math.cos(pa - Math.PI
